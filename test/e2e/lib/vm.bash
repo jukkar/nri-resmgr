@@ -61,7 +61,7 @@ vm-setup() {
     MACHINE=$(echo $VM_QEMU_CPUMEM | sed 's/MACHINE:-machine \([^|]*\).*/\1/g')
     CPU=$(echo $VM_QEMU_CPUMEM | sed 's/MACHINE:.*CPU:-smp \([^|]*\).*/\1/g')
     MEM=$(echo $VM_QEMU_CPUMEM | sed 's/MACHINE:.*CPU:.*MEM:-m \([^|]*\).*/\1/g')
-    EXTRA_ARGS=$(echo $VM_QEMU_CPUMEM | sed 's/MACHINE:.*CPU:.*MEM:.*EXTRA:\([^|]*\).*/\1/g')
+    EXTRA_ARGS="$(echo $VM_QEMU_CPUMEM | sed 's/MACHINE:.*CPU:.*MEM:.*EXTRA:\([^|]*\).*/\1/g')"
 
     if [ 0 == 1 ]; then
 	echo "MACHINE: $MACHINE"
@@ -106,6 +106,12 @@ vm-setup() {
     fi
 
     (cd "$vagrantdir";
+     vagrant plugin list | grep -q dotenv
+     if [ $? -ne 0 ]; then
+	 # Install vagrant plugins
+	 make install
+     fi
+
      if [ ! -d .vagrant ]; then
 	 vagrant init $distro
      fi

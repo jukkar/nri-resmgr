@@ -1,3 +1,6 @@
 # Ignore any e2e VM directories
 **/n*-containerd/
 **/n*-crio/
+
+# self hosted e2e runner might have large VM files
+test/self-hosted-runner/
