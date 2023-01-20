@@ -19,7 +19,6 @@ package agent
 import (
 	"flag"
 	"github.com/intel/nri-resmgr/pkg/kubernetes"
-	"github.com/intel/nri-resmgr/pkg/sockets"
 )
 
 type options struct {
@@ -34,8 +33,6 @@ type options struct {
 var opts = options{}
 
 func init() {
-	flag.StringVar(&opts.agentSocket, "agent-socket", sockets.ResourceManagerAgent, "Socket for incoming requests from cri-resmgr")
-	flag.StringVar(&opts.resmgrSocket, "cri-resmgr-socket", sockets.ResourceManagerConfig, "cri-resmgr socket to connect to")
 	flag.StringVar(&opts.kubeconfig, "kubeconfig", "", "Kubeconfig to use, empty string implies in-cluster config (i.e. running inside a Pod)")
 	flag.StringVar(&opts.configNs, "config-ns", "kube-system", "Kubernetes namespace where to look for config")
 	flag.StringVar(&opts.configMapName, "configmap-name", "cri-resmgr-config", "Name of the K8s ConfigMap to watch")

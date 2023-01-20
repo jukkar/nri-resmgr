@@ -200,14 +200,14 @@ func newConfigMapWatch(parent *watcher, name string, ns namespace) *watch {
 func newAdjustmentCRDWatch(parent *watcher, ns namespace) *watch {
 	w := newWatch(parent, "AdjustmentCRD", ns,
 		func(ns namespace, name string) (k8swatch.Interface, error) {
-			k8w, err := parent.resmgrCli.Adjustments(string(ns)).Watch(meta_v1.ListOptions{})
+			k8w, err := parent.resmgrCli.Adjustments(string(ns)).Watch(context.TODO(), meta_v1.ListOptions{})
 			if err != nil {
 				return nil, err
 			}
 			return k8w, nil
 		},
 		func(ns namespace, name string) (interface{}, error) {
-			crds, err := parent.resmgrCli.Adjustments(string(ns)).List(meta_v1.ListOptions{})
+			crds, err := parent.resmgrCli.Adjustments(string(ns)).List(context.TODO(), meta_v1.ListOptions{})
 			if err != nil {
 				return nil, err
 			}

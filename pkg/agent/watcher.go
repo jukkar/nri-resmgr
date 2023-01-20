@@ -17,9 +17,11 @@ limitations under the License.
 package agent
 
 import (
+	"context"
 	core_v1 "k8s.io/api/core/v1"
 	k8swatch "k8s.io/apimachinery/pkg/watch"
 	k8sclient "k8s.io/client-go/kubernetes"
+	k8sv1apis "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sync"
 	"time"
 
@@ -221,9 +223,11 @@ func (w *watcher) patchAdjustment(adjust *resmgr.Adjustment, inscope bool, error
 
 	ptype := pkgtypes.MergePatchType
 
+	poptions := &k8sv1apis.PatchOptions{}
+
 	w.Debug("patching status of adjustment %s status with %v...", adjust.Name, string(pdata))
 
-	if _, err := w.resmgrCli.Adjustments(opts.configNs).Patch(adjust.Name, ptype, pdata); err != nil {
+	if _, err := w.resmgrCli.Adjustments(opts.configNs).Patch(context.TODO(), adjust.Name, ptype, pdata, *poptions); err != nil {
 		return agentError("failed to patch Adjustment CRD %q: %v", adjust.Name, err)
 	}
 
