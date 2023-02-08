@@ -41,7 +41,7 @@
 
 ## NRI Core (https://github.com/containerd/nri)
 
-- [ ] change default socket path to `/var/run/nri/nri.sock` (to allow reconnect from container)
+- [x] change default socket path to `/var/run/nri/nri.sock` (to allow reconnect from container)
 - [ ] change socket permissions to `0700`
 - [ ] get rid of NRI config file
 - [ ] replace config file `disableConnections` with `WithDisableExternalConnections()`
