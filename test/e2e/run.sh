@@ -34,7 +34,12 @@ export SCP="scp $SSH_OPTS"
 export VM_SSH_USER=vagrant
 
 export nri_resmgr_src=${nri_resmgr_src:-"$SRC_DIR"}
-export nri_resmgr_cfg=${nri_resmgr_cfg:-"${SRC_DIR}/test/e2e/files/nri-resmgr-topology-aware.cfg"}
+
+if [ "$POLICY" == "topology-aware" ]; then
+    export nri_resmgr_cfg=${nri_resmgr_cfg:-"${SRC_DIR}/test/e2e/files/topology-aware/nri-resmgr-topology-aware.cfg"}
+elif [ "$POLICY" == "balloons" ]; then
+    export nri_resmgr_cfg=${nri_resmgr_cfg:-"${SRC_DIR}/test/e2e/files/balloons/nri-resmgr-balloons.cfg"}
+fi
 
 nri_resmgr_cache="/var/lib/nri-resmgr/cache"
 
@@ -161,6 +166,41 @@ instantiate() { # script API
     echo "$RESULT"
 }
 
+deploy-configmap() {
+    #   If the test case uses a custom configuration file, modify the
+    #   default kustomization.yaml with the name of the custom
+    #   configuration file. Then, generate configMap with kustomize
+    #   based on the updated(or default) kustomization.yaml. Move the
+    #   configMap into the VM /etc/nri-resmgr/ directory and apply it.
+
+    local CONFIGMAP=nri-resmgr-configmap.yaml
+    local cfg=`echo "$nri_resmgr_cfg" | sed 's|.*/||'`
+
+    # If test suite doesn't use the default configuration file,
+    # modify the configuration file name in the kustomization.yaml.
+    if [[ $POLICY == "balloons" ]]; then
+        cp "${SRC_DIR}/test/e2e/files/balloons/kustomization.yaml" "$TEST_OUTPUT_DIR"
+    elif [[ $POLICY == "topology-aware" ]]; then
+        cp "${SRC_DIR}/test/e2e/files/topology-aware/kustomization.yaml" "$TEST_OUTPUT_DIR"
+    fi
+
+    if [[ $cfg != "nri-resmgr-balloons.cfg" ]] || [[ $cfg != "nri-resmgr-topology-aware.cfg" ]]; then
+        sed -i "s/nri-resmgr.cfg.*/nri-resmgr.cfg=$cfg/g" "$TEST_OUTPUT_DIR/kustomization.yaml"
+    fi
+    
+    # Generate the configMap.
+    cp "$nri_resmgr_cfg" "$TEST_OUTPUT_DIR"
+    kustomize build "$TEST_OUTPUT_DIR"  > $CONFIGMAP
+    
+    # Scp the generated configMap into the target VM.
+    vm-command "chown $VM_SSH_USER:$VM_SSH_USER /etc/nri-resmgr/"
+	vm-command "rm -f /etc/nri-resmgr/nri-resmgr.cfg"
+    host-command "$SCP \"$CONFIGMAP\" $VM_HOSTNAME:/etc/nri-resmgr/$CONFIGMAP" || {
+            command-error "copying \"$CONFIGMAP\" to VM failed"
+    }
+    vm-command "kubectl apply -f /etc/nri-resmgr/$CONFIGMAP"
+}
+
 launch() { # script API
     # Usage: launch TARGET
     #
@@ -206,16 +246,12 @@ launch() { # script API
             ;;
 
         "nri-resmgr")
+        deploy-configmap
 	    if [ "$nri_resmgr_config" == "fallback" ]; then
 		nri_resmgr_deployment_file="/etc/nri-resmgr/nri-resmgr-deployment-fallback.yaml"
 	    else
 		nri_resmgr_deployment_file="/etc/nri-resmgr/nri-resmgr-deployment.yaml"
 	    fi
-	    vm-command "chown $VM_SSH_USER:$VM_SSH_USER /etc/nri-resmgr/"
-	    vm-command "rm -f /etc/nri-resmgr/nri-resmgr.cfg"
-	    host-command "$SCP \"$nri_resmgr_cfg\" $VM_HOSTNAME:/etc/nri-resmgr/nri-resmgr.cfg" || {
-                command-error "copying \"$nri_resmgr_cfg\" to VM failed"
-	    }
         host-command "$SCP \"$node_resource_topology_schema\" $VM_HOSTNAME:" ||
             command-error "copying \"$node_resource_topology_schema\" to VM failed"
         vm-command "kubectl delete -f $(basename "$node_resource_topology_schema"); kubectl create -f $(basename "$node_resource_topology_schema")"
@@ -270,6 +306,7 @@ terminate() { # script API
     case $target in
         "nri-resmgr")
 	    vm-command "kubectl delete -f /etc/nri-resmgr/nri-resmgr-deployment.yaml"
+        vm-command "kubectl delete -f /etc/nri-resmgr/nri-resmgr-configmap.yaml"
             ;;
         *)
             error "terminate: invalid target \"$target\""

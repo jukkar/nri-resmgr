@@ -127,17 +127,3 @@ spec:
       - name: resmgrconfig
         configMap:
           name: nri-resmgr-config
----
-apiVersion: v1
-data:
-  nri-resmgr.cfg: |
-    policy:
-      Active: topology-aware
-      ReservedResources:
-        CPU: 750m
-    logger:
-      Debug: nri-resmgr,resource-manager,cache,policy
-kind: ConfigMap
-metadata:
-  name: nri-resmgr-config
-  namespace: kube-system
