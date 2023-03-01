@@ -33,7 +33,7 @@ TAR_VERSION   := $(shell scripts/build/get-buildid --tar --shell=no)
 CONTAINER_RUN_CMD ?= docker run
 IMAGE_BUILD_CMD ?= docker build
 IMAGE_BUILD_EXTRA_OPTS ?=
-BUILDER_IMAGE ?= golang:1.19-bullseye
+BUILDER_IMAGE ?= golang:1.20-bullseye
 
 GO_CMD     := go
 GO_BUILD   := $(GO_CMD) build
