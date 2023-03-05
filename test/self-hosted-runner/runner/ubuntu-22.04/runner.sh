@@ -132,7 +132,7 @@ get_latest_runner() {
 
     mkdir -p actions-runner
 
-    curl -sL "https://github.com/actions/runner/releases/download/v${latest_runner_version}/actions-runner-linux-x64-${latest_runner_version}.tar.gz" | tar xzC actions-runner
+    curl --progress-bar -L "https://github.com/actions/runner/releases/download/v${latest_runner_version}/actions-runner-linux-x64-${latest_runner_version}.tar.gz" | tar xzC actions-runner
 
     echo $latest_runner_version > $LATEST_RUNNER
 }
