@@ -44,7 +44,7 @@ For Fedora, this means you need to install these packages to your host:
 
 ```
    $ sudo dnf install vagrant vagrant-libvirt
-   $ sudo dnf install bridge-utils make
+   $ sudo dnf install bridge-utils make fuse-overlayfs
    $ sudo dnf install libvirt /usr/bin/virt-sysprep
    $ sudo dnf groupinstall virtualization
    $ sudo systemctl unmask virtnetworkd-ro.socket
@@ -56,7 +56,7 @@ For Ubuntu, you need to install these packages to your host:
 
 ```
    $ sudo apt install vagrant-libvirt
-   $ sudo apt install bridge-utils make
+   $ sudo apt install bridge-utils make fuse-overlayfs
    $ sudo apt install libvirt-daemon guestfs-tools
    $ sudo apt install qemu-kvm libvirt-daemon-system
    $ sudo apt install qemu ebtables

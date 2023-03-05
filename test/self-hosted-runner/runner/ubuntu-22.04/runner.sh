@@ -137,6 +137,34 @@ get_latest_runner() {
     echo $latest_runner_version > $LATEST_RUNNER
 }
 
+# We create a overlayfs mount point and use it inside the build VM.
+# This way the possible changes done inside the VM will be automatically
+# discarded when the VM is removed.
+create_overlayfs() {
+    mkdir -p actions-runner-tmp/mounted
+    mkdir -p actions-runner-tmp/work
+    mkdir -p actions-runner-tmp/changed
+
+    # The actions-runner directory contains the original actions-runner
+    # software that is provided and downloaded from github.com. Then
+    # we mount overlayfs so that all the changes done by run.sh script will
+    # go to actions-runner-tmp and its subdirectories. After the runner
+    # has finished we can un-mount the actions-runner-tmp and remove it.
+    fuse-overlayfs -o lowerdir=actions-runner,upperdir=actions-runner-tmp/changed,workdir=actions-runner-tmp/work actions-runner-tmp/mounted
+    if [ $? -ne 0 ]; then
+	echo "Cannot create overlayfs mount point actions-runner-tmp/mounted"
+	exit 1
+    fi
+}
+
+remove_overlayfs() {
+    fusermount -u actions-runner-tmp/mounted
+
+    rm -rf actions-runner-tmp/mounted
+    rm -rf actions-runner-tmp/work
+    rm -rf actions-runner-tmp/changed
+}
+
 while [ $STOPPED -eq 0 ]; do
     GH_RUNNER_TOKEN=$(get_runner_token)
     if [ "$GH_RUNNER_TOKEN" == "null" ]; then
@@ -145,6 +173,8 @@ while [ $STOPPED -eq 0 ]; do
     fi
 
     get_latest_runner
+
+    create_overlayfs
 
     make up
 
@@ -178,10 +208,7 @@ while [ $STOPPED -eq 0 ]; do
 
     make destroy
 
-    # Remove the work directory as it is now useless
-    if [ -d actions-runner/_work ]; then
-	rm -rf actions-runner/_work
-    fi
+    remove_overlayfs
 
     # Re-read the values if user has changed them.
     . ../../env
