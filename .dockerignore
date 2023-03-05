@@ -4,3 +4,6 @@
 
 # self hosted e2e runner might have large VM files
 test/self-hosted-runner/
+
+# Ignore self-hosted-runner result file
+e2e-test-results/
