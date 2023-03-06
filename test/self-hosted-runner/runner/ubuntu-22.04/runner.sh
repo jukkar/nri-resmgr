@@ -104,13 +104,19 @@ get_runner_token() {
     echo $(echo $payload | jq .token --raw-output)
 }
 
+mkdir -p actions-runner
+
+remove_actions_runner() {
+    rm -rf actions-runner/* actions-runner/.??*
+}
+
 get_latest_runner() {
     LATEST_RUNNER=.github_self_hosted_runner_version
 
     latest_runner_version=$(curl -I -v -s https://github.com/actions/runner/releases/latest 2>&1 | sed -n 's/^< location: \(.*\)$/\1/p' | awk -F/ '{ print $NF }' | sed 's/v//' | tr -d '\r')
 
     if [ -e $LATEST_RUNNER ]; then
-	if [ -f actions-runner/config.sh ]; then
+	if [ -f actions-runner.tar.gz ]; then
 	    github_self_hosted_runner_version=$(cat $LATEST_RUNNER)
 	    if [ "$github_self_hosted_runner_version" == "$latest_runner_version" ]; then
 		return
@@ -120,49 +126,19 @@ get_latest_runner() {
 		echo "Current runner version ($github_self_hosted_runner_version) is not up to date."
 	    fi
 
-	    if [ -d actions-runner.old ]; then
-		rm -rf actions-runner.old
-	    fi
-
-	    mv actions-runner actions-runner.old >/dev/null 2>&1
+	    remove_actions_runner
 	fi
     fi
 
-    echo "Installing latest runner version ($latest_runner_version)"
+    echo "Downloading latest runner version ($latest_runner_version)"
 
-    mkdir -p actions-runner
-
-    curl --progress-bar -L "https://github.com/actions/runner/releases/download/v${latest_runner_version}/actions-runner-linux-x64-${latest_runner_version}.tar.gz" | tar xzC actions-runner
+    curl --progress-bar -L "https://github.com/actions/runner/releases/download/v${latest_runner_version}/actions-runner-linux-x64-${latest_runner_version}.tar.gz" > actions-runner.tar.gz
 
     echo $latest_runner_version > $LATEST_RUNNER
 }
 
-# We create a overlayfs mount point and use it inside the build VM.
-# This way the possible changes done inside the VM will be automatically
-# discarded when the VM is removed.
-create_overlayfs() {
-    mkdir -p actions-runner-tmp/mounted
-    mkdir -p actions-runner-tmp/work
-    mkdir -p actions-runner-tmp/changed
-
-    # The actions-runner directory contains the original actions-runner
-    # software that is provided and downloaded from github.com. Then
-    # we mount overlayfs so that all the changes done by run.sh script will
-    # go to actions-runner-tmp and its subdirectories. After the runner
-    # has finished we can un-mount the actions-runner-tmp and remove it.
-    fuse-overlayfs -o lowerdir=actions-runner,upperdir=actions-runner-tmp/changed,workdir=actions-runner-tmp/work actions-runner-tmp/mounted
-    if [ $? -ne 0 ]; then
-	echo "Cannot create overlayfs mount point actions-runner-tmp/mounted"
-	exit 1
-    fi
-}
-
-remove_overlayfs() {
-    fusermount -u actions-runner-tmp/mounted
-
-    rm -rf actions-runner-tmp/mounted
-    rm -rf actions-runner-tmp/work
-    rm -rf actions-runner-tmp/changed
+create_actions_runner() {
+    tar fxzC actions-runner.tar.gz actions-runner
 }
 
 while [ $STOPPED -eq 0 ]; do
@@ -174,7 +150,7 @@ while [ $STOPPED -eq 0 ]; do
 
     get_latest_runner
 
-    create_overlayfs
+    create_actions_runner
 
     make up
 
@@ -208,7 +184,7 @@ while [ $STOPPED -eq 0 ]; do
 
     make destroy
 
-    remove_overlayfs
+    remove_actions_runner
 
     # Re-read the values if user has changed them.
     . ../../env
