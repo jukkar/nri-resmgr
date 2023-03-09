@@ -15,12 +15,13 @@
 package topologyaware
 
 import (
+	"errors"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	resapi "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 
-	"github.com/intel/nri-resmgr/pkg/multierror"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/intel/nri-resmgr/pkg/cache"
@@ -175,7 +176,7 @@ func (p *policy) UpdateResources(c cache.Container) error {
 
 // Rebalance tries to find an optimal allocation of resources for the current containers.
 func (p *policy) Rebalance() (bool, error) {
-	var errors error
+	var errs error
 
 	containers := p.cache.GetContainers()
 	movable := []cache.Container{}
@@ -189,15 +190,15 @@ func (p *policy) Rebalance() (bool, error) {
 
 	for _, c := range movable {
 		if err := p.AllocateResources(c); err != nil {
-			if errors == nil {
-				errors = err
+			if errs == nil {
+				errs = err
 			} else {
-				errors = policyError("%v, %v", errors, err)
+				errs = policyError("%v, %v", errs, err)
 			}
 		}
 	}
 
-	return true, errors
+	return true, errs
 }
 
 // HandleEvent handles policy-specific events.
@@ -411,7 +412,7 @@ func (p *policy) ExportResourceData(c cache.Container) map[string]string {
 
 // reallocateResources reallocates the given containers using the given pool hints
 func (p *policy) reallocateResources(containers []cache.Container, pools map[string]string) error {
-	var errors error
+	var errs error
 
 	log.Info("reallocating resources...")
 
@@ -425,13 +426,13 @@ func (p *policy) reallocateResources(containers []cache.Container, pools map[str
 
 		grant, err := p.allocatePool(c, pools[c.GetCacheID()])
 		if err != nil {
-			errors = multierror.Append(errors, err)
+			errs = errors.Join(errs, err)
 		} else {
 			p.applyGrant(grant)
 		}
 	}
 
-	if err := multierror.New(errors); err != nil {
+	if err := errors.Join(errs); err != nil {
 		return err
 	}
 
