@@ -70,7 +70,8 @@ DOCKER_PULL := --pull
 
 PLUGINS := \
 	nri-resmgr-topology-aware \
-	nri-resmgr-balloons
+	nri-resmgr-balloons \
+	nri-resmgr-template
 
 
 ifneq ($(V),1)
@@ -170,6 +171,14 @@ $(BIN_PATH)/nri-resmgr-balloons: \
     $(shell for f in cmd/balloons/*.go; do echo $$f; done; \
                 for dir in $(shell $(GO_DEPS) ./cmd/balloons/... | \
                           grep '/nri-resmgr/' | \
+                          sed 's#github.com/intel/nri-resmgr/##g'); do \
+                find $$dir -name \*.go; \
+            done | sort | uniq)
+
+$(BIN_PATH)/nri-resmgr-template: \
+    $(shell for dir in \
+                  $(shell go list -f '{{ join .Deps  "\n"}}' ./... | \
+                          egrep '(nri-resmgr/pkg/)|(nri-resmgr/cmd/template/)' | \
                           sed 's#github.com/intel/nri-resmgr/##g'); do \
                 find $$dir -name \*.go; \
             done | sort | uniq)
